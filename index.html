@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harum Script Share - Online</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #050505;
+            --card-bg: #111;
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff007b;
+            --neon-green: #39ff14;
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: var(--neon-pink);
+            text-shadow: 0 0 15px var(--neon-pink);
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .box {
+            background: var(--card-bg);
+            border: 1px solid #333;
+            padding: 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.8);
+        }
+
+        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+
+        input, textarea {
+            background: #000;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 12px;
+            border-radius: 5px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        textarea { height: 100px; resize: none; }
+
+        .share-btn {
+            width: 100%;
+            padding: 15px;
+            background: transparent;
+            color: var(--neon-blue);
+            border: 2px solid var(--neon-blue);
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+
+        .share-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid #222;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 600px;
+            border-left: 5px solid var(--neon-pink);
+            position: relative;
+        }
+
+        .card-header { padding: 15px; cursor: pointer; }
+        .title-text { color: var(--neon-blue); font-weight: bold; font-size: 1.2em; display: block; margin-right: 60px; }
+        .owner-text { color: var(--neon-green); font-size: 0.85em; }
+        .preview-text { color: #888; font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 5px; }
+
+        .full-content {
+            display: none;
+            padding: 15px;
+            background: #000;
+            border-top: 1px solid #333;
+        }
+
+        .copy-btn {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: transparent;
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .del-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #441111;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        pre {
+            background: #080808;
+            padding: 10px;
+            color: #ccc;
+            font-size: 13px;
+            border: 1px solid #222;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .label-all {
+            display: block;
+            text-align: right;
+            font-size: 10px;
+            color: var(--neon-pink);
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>HARUM SCRIPT SHARE</h1>
+
+    <div class="box">
+        <input type="text" id="searchInput" placeholder="Cari script atau owner..." onkeyup="searchScript()">
+    </div>
+
+    <div class="box">
+        <div class="input-row">
+            <input type="text" id="ownerInput" placeholder="Nama Owner">
+            <input type="text" id="titleInput" placeholder="Judul Script">
+        </div>
+        <textarea id="scriptInput" placeholder="Tempelkan script di sini..."></textarea>
+        <button class="share-btn" onclick="addScript()">SHARE ONLINE</button>
+    </div>
+
+    <div id="container" style="width: 100%; max-width: 600px;"></div>
+
+    <script>
+        // DATA FIREBASE DIAMBIL DARI FOTO KAMU
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVNcx_WZlj65i9K0QiG46EwqU_U0Dp0-U",
+            authDomain: "harumscript-cd99b.firebaseapp.com",
+            databaseURL: "https://harumscript-cd99b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "harumscript-cd99b",
+            storageBucket: "harumscript-cd99b.firebasestorage.app",
+            messagingSenderId: "675765648681",
+            appId: "1:675765648681:web:9dd3e8711aae8d27594b38"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Cek ID Browser (untuk fitur hapus milik sendiri)
+        if (!localStorage.getItem('my_user_id')) {
+            localStorage.setItem('my_user_id', 'user_' + Date.now());
+        }
+        const MY_ID = localStorage.getItem('my_user_id');
+
+        // Loading data secara Realtime
+        db.ref('scripts').on('value', (snapshot) => {
+            const container = document.getElementById('container');
+            container.innerHTML = "";
+            snapshot.forEach((childSnapshot) => {
+                renderScript(childSnapshot.val(), childSnapshot.key);
+            });
+        });
+
+        function addScript() {
+            const owner = document.getElementById('ownerInput').value.trim();
+            const title = document.getElementById('titleInput').value.trim();
+            const script = document.getElementById('scriptInput').value.trim();
+
+            if (!owner || !title || !script) return alert("Lengkapi data sebelum share!");
+
+            db.ref('scripts').push({
+                creatorId: MY_ID,
+                owner,
+                title,
+                script,
+                timestamp: Date.now()
+            });
+
+            document.getElementById('ownerInput').value = "";
+            document.getElementById('titleInput').value = "";
+            document.getElementById('scriptInput').value = "";
+        }
+
+        function renderScript(data, key) {
+            const container = document.getElementById('container');
+            const card = document.createElement('div');
+            card.className = 'card';
+            const isOwner = (data.creatorId === MY_ID);
+
+            card.innerHTML = `
+                <div class="card-header" onclick="toggleScript(this)">
+                    ${isOwner ? `<button class="del-btn" onclick="deleteScript('${key}', event)">HAPUS</button>` : ''}
+                    <span class="title-text">${escapeHtml(data.title)}</span>
+                    <span class="owner-text">By: ${escapeHtml(data.owner)}</span>
+                    <span class="preview-text">${escapeHtml(data.script)}</span>
+                    <span class="label-all">KLIK UNTUK LIHAT</span>
+                </div>
+                <div class="full-content">
+                    <button class="copy-btn" onclick="copyAction(this)">COPY SCRIPT</button>
+                    <pre>${escapeHtml(data.script)}</pre>
+                </div>
+            `;
+            container.prepend(card);
+        }
+
+        function toggleScript(header) {
+            const content = header.nextElementSibling;
+            content.style.display = (content.style.display === "block") ? "none" : "block";
+        }
+
+        function copyAction(btn) {
+            const codeText = btn.nextElementSibling.innerText;
+            const tempArea = document.createElement("textarea");
+            tempArea.value = codeText;
+            document.body.appendChild(tempArea);
+            tempArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempArea);
+            
+            const originalText = btn.innerText;
+            btn.innerText = "BERHASIL DI COPY!";
+            setTimeout(() => btn.innerText = originalText, 2000);
+        }
+
+        function deleteScript(key, event) {
+            event.stopPropagation();
+            if(confirm("Hapus script ini dari database?")) {
+                db.ref('scripts/' + key).remove();
+            }
+        }
+
+        function searchScript() {
+            const filter = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.getElementsByClassName('card');
+            for (let card of cards) {
+                card.style.display = card.innerText.toLowerCase().includes(filter) ? "" : "none";
+            }
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
